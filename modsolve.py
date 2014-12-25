@@ -106,6 +106,8 @@ def bind_model( inexpr, G ):
             outexpr = outexpr.subs( 'g'+si+'_'+sj, G[i,j] )
     return outexpr.simplify()
 
+define_stimuli( ['A', 'B', 'AB'] )
+
 ## model generalization factors
 rem = G_rem()
 c = symbols('c')
@@ -116,7 +118,6 @@ pearce87 = Matrix( 3, 3, map( lambda x: x**2, pearce94 ) )
 
 ## example: element reversal
 (rA1, rA2, rAB2) = symbols('rA1 rA2 rAB2')
-define_stimuli( ['A', 'B', 'AB'] )
 calculate_phase( 1, [A], [rA1] )
 calculate_phase( 2, [A, AB], [rA2, rAB2] )
 rB2 = respond( B, 2 )
@@ -126,7 +127,6 @@ fr_p94 = bind_model( rB2, pearce94 )
 
 ## example: external inhibition
 cleanup()
-define_stimuli( ['A', 'B', 'AB'] )
 calculate_phase( 1, [A], [1] )
 rB1 = respond( AB, 1 )
 ei_rem = bind_model( rB1, rem )
