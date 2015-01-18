@@ -1,144 +1,149 @@
 from sympy import *
+from math import copysign
 
-## define symbolic generalization matrix and associated symbols
-def define_g(i,j):
-    g = globals()
-    (i, j) = sorted( [i, j] )
-    gStr = 'g' + g['S'][i] + '_' + g['S'][j]
-    if gStr not in g:
-        g[ gStr ] = symbols( gStr )
-    return g[ gStr ]
+# keep in mind these variable naming conventions to navigate the code:
+# - X represents a stimulus
+# - V represents an associative strength
+# - V0 is the initial value of an associative strength
+# - w is the weight of a stimulus in the kernel machine
+# - postfix 's' stands for plural; e.g., ws is a list of weights 
+# - prefix 'i' stands for 'index'; e.g., iXs is a list of stimulus indices
+# - the self.symbols dictionary is often aliased to s for brevity
 
-def cleanup():
-    g = globals()
-    if 'S' not in g: return
-    if 'R0' not in g: return
-    del g[ 'R0' ]
-    phase = 1
-    while 'R' + str(phase) in g:
-        del g[ 'R' + str(phase) ]
-        for s in g[ 'S' + str(phase) ]:
-            c = 'c' + g['S'][s] + str(phase)
-            if c in g: del g[ c ]
-        del g[ 'S' + str(phase) ]
-    for gf in set( flatten(G) ):
-        del g[ str(gf) ]
-    del g['G']
-    del g['S']
+class model:
+    '''A generic associative learning model (kernel machine).'''
 
-## define stimuli and symbolic generalization matrix 
-def define_stimuli( S ):
-    g = globals()
-    g['S'] = S
-    n = len(S)
-    for i in range( 0, n ):
-        g[ S[i] ] = i
-    g[ 'G' ] = Matrix( n, n, define_g )
-    g[ 'R0' ] = Matrix( n, 1, n*[0] )
+    def __init__( self ):
+        self.phases = [ {} ] # phase 0 is empty by default
+        self.symbols = {}    # all symbols for this model
+        self.stimuli = []    # all stimuli, in order of addition
+        self.info = 0        # set to 1 to get some messages
 
-## define response function
-def respond( Z, phase ):
-    g = globals()
-    if phase == 0:
-        return g[ 'R0' ][ Z ]
-    myS = g[ 'S' + str(phase) ]
-    rZ = respond( Z, phase - 1 );
-    for i in myS:
-        c = 'c' + str( g['S'][i] ) + str(phase)
-        rZ += g[ c ] * G[i,Z]
-    return rZ.simplify()
+    def train( self, XVs ):
+        '''Add a training phase. For example: XVs = {'A':1, 'AB':0} 
+        trains a response of 1 to A and of 0 to AB.'''
+        s = self.symbols # shortcut
+        self.phases.append( dict( XVs ) )
+        self._msg( "training phases: " + str(self.phases) )
+        p = len( self.phases ) - 1        # this phase
+        self._add_stimuli( XVs.keys() )
+        ws = []                           # symbols for stimulus weights
+        for X in XVs:
+            wXp = 'w' + str(X) + str(p)   # weight symbol name
+            if wXp not in s: 
+                s[ wXp ] = symbols( wXp ) # create symbol
+            ws.append( s[ wXp ] )         # append to weights list
+        ws = Matrix( ws )                 # turn list into vector
+        iXs = [ self.stimuli.index(X) for X in XVs ]   # stimulus indices
+        G = self.G[ iXs, iXs ]            # generalization submatrix
+        Vs0 = Matrix([self.V(X, p-1) for X in XVs])    # initial Vs
+        Vs = Matrix( XVs.values() )                    # target Vs
+        solution = solve( Eq( Vs0 + G * ws, Vs ), ws ) # SOLUTION!
+        for w in ws:
+            self._msg( str(w) + " = " + str( solution[w] ) )
+            s[ str(w) ] = solution[ w ]   # add ws to symbols
 
-def calculate_phase( phase, myS, myR ):
-    n = len( myS )
-    g = globals()
-    g[ 'S' + str(phase) ] = myS
-    myR = Matrix( n, 1, myR )
-    g[ 'R' + str(phase) ] = myR
-    R0 = g[ 'R' + str(phase-1) ]
-    myR0 = Matrix( n, 1, n*[0] )
-    for s in range(0, n):
-        myR0[ s ] = respond( myS[s], phase-1 )
-    myG = G[ myS, myS ]
-    myC = []
-    for s in myS:
-        name = g[ 'S' ][s]
-        c = 'c' + str(name) + str(phase)
-        myC.append( symbols( c ) )
-    myC = Matrix( n, 1, myC )
-    sol = solve( Eq( myR0 + myG*myC, myR ), myC )
-    for c in myC:
-        g[ str(c) ] = sol[ c ]
-        print( str(c) + ":\t" )
-        pretty_print( sol[ c ] )
-        print( "" )
+    def bind( self, inexpr, model ):
+        '''Compute the value of a generic expression for a particular
+        model.
 
-## bind a result to a model 
-def G_rem():
-    g = globals()
-    r = symbols('r')
-    n = len( g['S'] )
-    G = Matrix( n, n, n**2 * [0] )
-    for i in range(0,n):
-        si = g['S'][ i ]
-        ni = len(si)
-        G[i,i] = ni
-        for j in range(i+1,n):
-            sj = g['S'][ j ]
-            nj = len(sj)
-            k = len( set(si) & set(sj) )
+        '''
+        # the way we do this is to create a copy of the input
+        # expression, substitute all the gX_Y coefficients with the
+        # model values, and then simplify. the result is returned and
+        # NOT stored in the model's symbols dictionary.
+        s = self.symbols
+        self._make_G( model ) # create model's generalization matrix
+        G = s[ 'G' + model ]  # shortcut 
+        outexpr = inexpr      
+        n = len( self.stimuli )
+        for i in range(0, n):
+            si = self.stimuli[ i ]
+            for j in range(i, n):
+                sj = self.stimuli[ j ]
+                outexpr = outexpr.subs( 'g'+si+'_'+sj, G[i,j] )
+        return outexpr.simplify()
+
+    def _make_G( self, model ):
+        '''Create a generalization matrix for a given model.'''
+        s = self.symbols
+        if model == 'rem' and 'r' not in s:
+            s[ 'r' ] = symbols('r')
+        elif model in ['p87', 'p94'] and 'c' not in s:
+            s[ 'c' ] = symbols('c')
+        n = self.G.rows
+        G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
+        for i in range(0, G.rows):
+            for j in range(i, G.rows ):
+                (si, sj) = str( self.G[i,j] )[ 1: ].split('_')
+                G[j,i] = G[i,j] = self._make_g( si, sj, model )
+            
+    def _make_g( self, s1, s2, model ):
+        '''Create a single generalization factor for a given model.''' 
+        s = self.symbols
+        n1 = len( s1 )
+        n2 = len( s2 )
+        k = len( set(s1) & set(s2) )
+        if model == 'rem':
             if k == 0:
-                gij= 0
+                return 0
+            elif s1 == s2:
+                return k
             else:
-                m = max( ni, nj ) - 1
-                gij = k * (1-r) ** m + (k-1)*r
-            G[i,j] = G[j,i] = gij
-    return G
+                m = max( n1, n2 ) - 1
+                g = k * ( 1 - s['r'] )**m + (k-1) * s['r']
+        elif model in ['p87', 'p94']:
+            if s1 == s2:
+                return 1
+            elif (n1==1 and n2==2 or n1==2 and n2==1) and k==1:
+                g = 1 / sqrt( 2 - s['c'] )
+            elif n1==1 and n2==1:
+                g = s['c']
+            else:
+                Exception( 'model "'+model+'" not implemented for '+
+                           str(s1)+' and '+str(s2) )
+            if model == 'p87':
+                g = g**2
+        else:
+            raise Exception('model "' + model + '" not known')
+        return g.simplify()
 
-## bind a result to a model 
-def bind_model( inexpr, G ):
-    g = globals()
-    n = len( g['S'] )
-    outexpr = inexpr
-    for i in range(0,n):
-        si = g['S'][ i ]
-        for j in range(i,n):
-            sj = g['S'][ j ]
-            outexpr = outexpr.subs( 'g'+si+'_'+sj, G[i,j] )
-    return outexpr.simplify()
+    def V( self, X, p ):
+        '''Return the associative strength of X at the end of phase p.'''
+        self._add_stimuli( [X] )
+        s = self.symbols
+        VXp = 'V' + X + str(p)
+        if p==0:
+            if VXp not in s:
+                self._msg( 'assuming ' + VXp +' = 0' )
+                s[ VXp ] = 0
+            return s[ VXp ]
+        VX = self.V( X, p-1 )
+        iX = self.stimuli.index( X )
+        for i in range(0, len(self.stimuli) ):
+            w = 'w' + self.stimuli[i] + str(p)
+            if w in s:
+                VX += s[w] * self.G[i,iX]
+        s[ VXp ] = simplify( VX )
+        return s[ VXp ]
+ 	
+    def _add_stimuli( self, newXs ):
+        '''An internal method to add stimuli to the list of known
+        stimuli, and expand the generalization matrix as needed.'''
+        Xs = self.stimuli
+        for x in newXs:
+            if x not in Xs:
+                Xs.append( x )
+        n = len( Xs )
+        self.G = Matrix( n, n, n**2 * [0] )
+        for i in range(0, n):
+            stri = str( Xs[i] )
+            self.G[i,i] = symbols( 'g' + stri + '_' + stri )
+            for j in range(i,n):
+                self.G[i,j] = symbols( 'g' + stri + '_' + str(Xs[j]) )
+                self.G[j,i]= self.G[i,j]
 
-define_stimuli( ['A', 'B', 'AB'] )
-
-## model generalization factors
-rem = G_rem()
-c = symbols('c')
-pearce94 = Matrix( [ [1, c, 1/sqrt(2-c)],
-                  [c, 1, 1/sqrt(2-c)],
-                  [1/sqrt(2-c), 1/sqrt(2-c), 1] ] )
-pearce87 = Matrix( 3, 3, map( lambda x: x**2, pearce94 ) )
-
-## example: element reversal
-(rA1, rA2, rAB2) = symbols('rA1 rA2 rAB2')
-calculate_phase( 1, [A], [rA1] )
-calculate_phase( 2, [A, AB], [rA2, rAB2] )
-rB2 = respond( B, 2 )
-fr_rem = bind_model( rB2, rem )
-fr_p87 = bind_model( rB2, pearce87 )
-fr_p94 = bind_model( rB2, pearce94 )
-
-## example: external inhibition
-cleanup()
-calculate_phase( 1, [A], [1] )
-rB1 = respond( AB, 1 )
-ei_rem = bind_model( rB1, rem )
-ei_p87 = bind_model( rB1, pearce87 )
-ei_p94 = bind_model( rB1, pearce94 )
-
-## example: summation
-cleanup()
-define_stimuli( ['A', 'B', 'AB'] )
-calculate_phase( 1, [A, B], [1, 1] )
-rAB1 = respond( AB, 1 )
-sm_rem = bind_model( rAB1, rem )
-sm_p87 = bind_model( rAB1, pearce87 )
-sm_p94 = bind_model( rAB1, pearce94 )
-
+    def _msg( self, msg ):
+        '''An internal method to print informational messages.'''
+        if self.info:
+            print msg
