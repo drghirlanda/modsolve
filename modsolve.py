@@ -14,7 +14,7 @@ class model:
     '''A generic associative learning model (kernel machine).'''
 
     def __init__( self ):
-        self.phases = [ {} ] # phase 0 is empty by default
+        self.design = [ {} ] # phase 0 is empty by default
         self.symbols = {}    # all symbols for this model
         self.stimuli = []    # all stimuli, in order of addition
         self.info = 0        # set to 1 to get some messages
@@ -23,11 +23,11 @@ class model:
         '''Add a training phase. For example: XVs = {'A':1, 'AB':0} 
         trains a response of 1 to A and of 0 to AB.'''
         s = self.symbols # shortcut
-        self.phases.append( dict( XVs ) )
-        self._info( "training phases: " + str(self.phases) )
-        p = len( self.phases ) - 1        # this phase
+        self.design.append( dict( XVs ) )
+        self._info( "training phases: " + str(self.design) )
+        p = len( self.design ) - 1        # this phase
         self._add_stimuli( XVs.keys() )
-        ws = []                           # symbols for stimulus weightsHere comes the assignment for tomorrow.
+        ws = []                           # symbols for stimulus weights
         for X in XVs:
             wXp = 'w' + str(X) + str(p)   # weight symbol name
             if wXp not in s: 
@@ -48,7 +48,7 @@ class model:
         model.
 
         '''
-Here comes the assignment for tomorrow.        # the way we do this is to create a copy of the input
+        # the way we do this is to create a copy of the input
         # expression, substitute all the gX_Y coefficients with the
         # model values, and then simplify. the result is returned and
         # NOT stored in the model's symbols dictionary.
@@ -56,15 +56,15 @@ Here comes the assignment for tomorrow.        # the way we do this is to create
         self._make_G( model ) # create model's generalization matrix
         G = s[ 'G' + model ]  # shortcut 
         outexpr = inexpr      
-        n = len( self.stimuli )Here comes the assignment for tomorrow.
-        for i in range(0, n):Here comes the assignment for tomorrow.
-            si = self.stimuli[ i ]Here comes the assignment for tomorrow.
+        n = len( self.stimuli )
+        for i in range(0, n):
+            si = self.stimuli[ i ]
             for j in range(i, n):
                 sj = self.stimuli[ j ]
                 outexpr = outexpr.subs( 'g'+si+'_'+sj, G[i,j] )
         outexpr = outexpr.simplify()
         pretty_print( outexpr )
-        return outexprHere comes the assignment for tomorrow.Here comes the assignment for tomorrow.
+        return outexpr
 
     def _make_G( self, model ):
         '''Create a generalization matrix for a given model.'''
@@ -75,47 +75,12 @@ Here comes the assignment for tomorrow.        # the way we do this is to create
             s[ 'c' ] = symbols('c')
         n = self.G.rows
         G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
-        for i in range(0, G.rows):Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
-            s[ 'c' ] = symbols('c')
-        n = self.G.rows
-        G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
-        for i in range(0, G.rows):Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
-            for j in range(i, G.rows ):
-        '''Create a generalization matrix for a given model.'''
-        s = self.symbols
-        if model == 'rem' and 'r' not in s:
-            s[ 'r' ] = symbols('r')
-        elif model in ['p87', 'p94'] and 'c' not in s:
-            s[ 'c' ] = symbols('c')
-        n = self.G.rows
-        G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
-        for i in range(0, G.rows):Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
-            s[ 'c' ] = symbols('c')
-        '''Create a generalization matrix for a given model.'''
-        s = self.symbols
-        if model == 'rem' and 'r' not in s:
-            s[ 'r' ] = symbols('r')
-        elif model in ['p87', 'p94'] and 'c' not in s:
-            s[ 'c' ] = symbols('c')
-        n = self.G.rows
-        G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
-        for i in range(0, G.rows):Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
-            s[ 'c' ] = symbols('c')
-                (si, sj) = str( self.G[i,j] )[ 1: ].split('_')
-        '''Create a generalization matrix for a given model.'''
-        s = self.symbols
-        if model == 'rem' and 'r' not in s:
-            s[ 'r' ] = symbols('r')
-        elif model in ['p87', 'p94'] and 'c' not in s:
-            s[ 'c' ] = symbols('c')
-        n = self.G.rows
-        G = s[ 'G'+model ] = Matrix( n, n, n**2 * [0] )
-        for i in range(0, G.rows):Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
+        for i in range(0, G.rows):
             s[ 'c' ] = symbols('c')
             for j in range(i, G.rows ):
                 (si, sj) = str( self.G[i,j] )[ 1: ].split('_')
                 G[j,i] = G[i,j] = self._make_g( si, sj, model )
-            Here comes the assignment for tomorrow.Here comes the assignment for tomorrow.
+
     def _make_g( self, s1, s2, model ):
         '''Create a single generalization factor for a given model.''' 
         s = self.symbols
@@ -200,105 +165,3 @@ Here comes the assignment for tomorrow.        # the way we do this is to create
             raise Exception('model "' + model + '" not known')
         return g.simplify()
 
-    def V( self, X, p ):
-        '''Return the associative strength of X at the end of phase p.'''
-        self._add_stimuli( [X] )
-        s = self.symbols
-        VXp = 'V' + X + str(p)
-        if p==0:
-            if VXp not in s:
-                self._info( 'assuming ' + VXp +' = 0' )
-                s[ VXp ] = 0
-            return s[ VXp ]
-        VX = self.V( X, p-1 )
-        iX = self.stimuli.index( X )
-        for i in range(0, len(self.stimuli) ):
-            w = 'w' + self.stimuli[i] + str(p)
-            if w in s:
-                VX += s[w] * self.G[i,iX]
-        s[ VXp ] = simplify( VX )
-        return s[ VXp ]
- 	
-    def _add_stimuli( self, newXs ):
-        '''An internal method to add stimuli to the list of known
-        stimuli, and expand the generalization matrix as needed.'''
-        Xs = self.stimuli
-        for x in newXs:
-
-                return 1
-            elif (n1==1 and n2==2 or n1==2 and n2==1) and k==1:
-                g = 1 / sqrt( 2 - s['c'] )
-            elif n1==1 and n2==1:
-                g = s['c']
-            else:
-                Exception( 'model "'+model+'" not implemented for '+
-                           str(s1)+' and '+str(s2) )
-            if model == 'p87':
-                g = g**2
-        else:
-            raise Exception('model "' + model + '" not known')
-        return g.simplify()
-
-    def V( self, X, p ):
-        '''Return the associative strength of X at the end of phase p.'''
-        self._add_stimuli( [X] )
-        s = self.symbols
-        VXp = 'V' + X + str(p)
-        if p==0:
-            if VXp not in s:
-                self._info( 'assuming ' + VXp +' = 0' )
-                s[ VXp ] = 0
-            return s[ VXp ]
-        VX = self.V( X, p-1 )
-        iX = self.stimuli.index( X )
-        for i in range(0, len(self.stimuli) ):
-            w = 'w' + self.stimuli[i] + str(p)
-            if w in s:
-                VX += s[w] * self.G[i,iX]
-        s[ VXp ] = simplify( VX )
-        return s[ VXp ]
- 	
-    def _add_stimuli( self, newXs ):
-        '''An internal method to add stimuli to the list of known
-        stimuli, and expand the generalization matrix as needed.'''
-        Xs = self.stimuli
-        for x in newXs:
-
-                return 1
-            elif (n1==1 and n2==2 or n1==2 and n2==1) and k==1:
-                g = 1 / sqrt( 2 - s['c'] )
-            elif n1==1 and n2==1:
-                g = s['c']
-            else:
-                Exception( 'model "'+model+'" not implemented for '+
-                           str(s1)+' and '+str(s2) )
-            if model == 'p87':
-                g = g**2
-        else:
-            raise Exception('model "' + model + '" not known')
-        return g.simplify()
-
-    def V( self, X, p ):
-        '''Return the associative strength of X at the end of phase p.'''
-        self._add_stimuli( [X] )
-        s = self.symbols
-        VXp = 'V' + X + str(p)
-        if p==0:
-            if VXp not in s:
-                self._info( 'assuming ' + VXp +' = 0' )
-                s[ VXp ] = 0
-            return s[ VXp ]
-        VX = self.V( X, p-1 )
-        iX = self.stimuli.index( X )
-        for i in range(0, len(self.stimuli) ):
-            w = 'w' + self.stimuli[i] + str(p)
-            if w in s:
-                VX += s[w] * self.G[i,iX]
-        s[ VXp ] = simplify( VX )
-        return s[ VXp ]
- 	
-    def _add_stimuli( self, newXs ):
-        '''An internal method to add stimuli to the list of known
-        stimuli, and expand the generalization matrix as needed.'''
-        Xs = self.stimuli
-        for x in newXs:
