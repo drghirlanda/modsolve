@@ -1,7 +1,7 @@
 import modsolve
 from sympy import plot
 
-## feature-positive discrimination
+# feature-positive discrimination
 m = modsolve.model()
 m.train( {'A':0, 'AB':1} )
 VB1 = m.V( 'B', 1 )
@@ -11,7 +11,7 @@ VB1p94 = m.bind( VB1, 'p94' )
 (r, c) = (m.symbols['r'], m.symbols['c'])
 plot( (VB1rem, (r,0,1)), (VB1p87, (c,0,1)), (VB1p94, (c,0,1)) )
 
-## external inhibition
+# external inhibition
 m = modsolve.model()
 m.train( {'A':1} )
 VAB1 = m.V( 'AB', 1 )
@@ -31,7 +31,7 @@ VAB1p94 = m.bind( VAB1, 'p94' )
 (r, c) = (m.symbols['r'], m.symbols['c'])
 plot( (VAB1rem, (r,0,1)), (VAB1p87, (c,0,1)), (VAB1p94, (c,0,1)) )
 
-## compound extinction
+# compound extinction
 m = modsolve.model()
 m.train( {'A':1, 'B':1} )
 m.train( {'AB':0} )
