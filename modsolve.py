@@ -150,18 +150,3 @@ class model:
         '''An internal method to print informational messages.'''
         if self.info:
             print msg
-
-                return 1
-            elif (n1==1 and n2==2 or n1==2 and n2==1) and k==1:
-                g = 1 / sqrt( 2 - s['c'] )
-            elif n1==1 and n2==1:
-                g = s['c']
-            else:
-                Exception( 'model "'+model+'" not implemented for '+
-                           str(s1)+' and '+str(s2) )
-            if model == 'p87':
-                g = g**2
-        else:
-            raise Exception('model "' + model + '" not known')
-        return g.simplify()
-
