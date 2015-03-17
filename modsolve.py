@@ -10,14 +10,22 @@ from math import copysign
 # - prefix 'i' stands for 'index'; e.g., iXs is a list of stimulus indices
 # - the self.symbols dictionary is often aliased to s for brevity
 
+class design(list):
+    '''An experimental design is a list of stimulus-response associations
+    that specify what is trained.'''
+    def __init__(self):
+        '''When an experimental design is created, it has one empty phase
+        representing the initial state of the experiment.'''
+        self.append( {} )
+
 class model:
     '''A generic associative learning model (kernel machine).'''
 
     def __init__( self ):
-        self.design = [ {} ] # phase 0 is empty by default
+        self.design = design()
         self.symbols = {}    # all symbols for this model
         self.stimuli = []    # all stimuli, in order of addition
-        self.info = 0        # set to 1 to get some messages
+        self.info = 1        # 0: no message; 1: messages
 
     def train( self, XVs ):
         '''Add a training phase. For example: XVs = {'A':1, 'AB':0} 
