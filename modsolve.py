@@ -1,5 +1,7 @@
 from sympy import *
 from math import copysign
+from abstractModel import model
+from design import design
 
 # keep in mind these variable naming conventions to navigate the code:
 # - X represents a stimulus
@@ -10,15 +12,7 @@ from math import copysign
 # - prefix 'i' stands for 'index'; e.g., iXs is a list of stimulus indices
 # - the self.symbols dictionary is often aliased to s for brevity
 
-class design(list):
-    '''An experimental design is a list of stimulus-response associations
-    that specify what is trained.'''
-    def __init__(self):
-        '''When an experimental design is created, it has one empty phase
-        representing the initial state of the experiment.'''
-        self.append( {} )
-
-class model:
+class kernelMachine(model):
     '''A generic associative learning model (kernel machine).'''
 
     def __init__( self ):
@@ -27,25 +21,33 @@ class model:
         self.stimuli = []    # all stimuli, in order of addition
         self.info = 1        # 0: no message; 1: messages
 
-    def train( self, XVs ):
+    def train( self, design ):
         '''Add a training phase. For example: XVs = {'A':1, 'AB':0} 
         trains a response of 1 to A and of 0 to AB.'''
         s = self.symbols # shortcut
-        self.design.append( dict( XVs ) )
-        self._info( "training phases: " + str(self.design) )
-        p = len( self.design ) - 1        # this phase
-        self._add_stimuli( XVs.keys() )
-        ws = []                           # symbols for stimulus weights
-        for X in XVs:
-            wXp = 'w' + str(X) + str(p)   # weight symbol name
-            if wXp not in s: 
-                s[ wXp ] = symbols( wXp ) # create symbol
-            ws.append( s[ wXp ] )         # append to weights list
-        ws = Matrix( ws )                 # turn list into vector
-        iXs = [ self.stimuli.index(X) for X in XVs ]   # stimulus indices
+        #self.design.append( dict( XVs ) )
+        self._info( "training phases: " + design.printDesign())
+        p = design.len() - 1     # this phase
+        self._add_stimuli(design.allStimuli())
+        ws = []# symbols for stimulus weights
+        
+        #this for loop creats weight symbols and store them in symbols
+        for i in design:
+            for X in i:
+                wXp = 'w' + str(X) + str(p)   # weight symbol name
+                if wXp not in s: 
+                    s[ wXp ] = symbols( wXp ) # create symbol
+                ws.append( s[ wXp ] )         # append to weights list
+        print ws
+        ws = Matrix( ws )# turn list into vector
+        iXs = []
+        for i in design:
+            for X in i:
+                iXs.append(self.stimuli.index(X)) # stimulus indices 
         G = self.G[ iXs, iXs ]            # generalization submatrix
-        Vs0 = Matrix([self.V(X, p-1) for X in XVs])    # initial Vs
-        Vs = Matrix( XVs.values() )                    # target Vs
+        
+        Vs0 = Matrix([self.V(X, p-1) for i in design for X in i])    # initial Vs
+        Vs = Matrix( design.values() )                    # target Vs
         solution = solve( Eq( Vs0 + G * ws, Vs ), ws ) # SOLUTION!
         for w in ws:
             self._info( str(w) + " = " + str( solution[w] ) )
