@@ -8,15 +8,18 @@ class design(list):
         
     def append(self, newPhase):
         '''add phase to the design'''
-        if design.checkArgument(self,newPhase):
+        if design.checkArgument(self, newPhase):
             super(design, self).append(newPhase)
         else:
             print 'Error. Dictionary not added'
         
         
-    def insert(self, newPhase):
+    def insert(self, index, newPhase):
         '''inserts phase into design'''
-        pass
+        if design.checkArgument(self, newPhase):
+            super(design, self).insert(index, newPhase)
+        else:
+            print 'Error. Phase not added'
     
     def extend(self):
         '''add phases from list'''
