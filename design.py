@@ -21,10 +21,18 @@ class design(list):
         else:
             print 'Error. Phase not added'
     
-    def extend(self):
-        '''add phases from list'''
-        pass
-    
+    def extend(self, list):
+        '''add phases from list of dictionaries'''
+        check = True
+        for i in list:
+            if design.checkArgument(self, i) == False:
+                check = False
+                break;
+        if check==False:
+            print 'Error. List was not added.'
+        else:
+            super(design, self).extend(list)
+        
     def len(self):
         return len(self)
     
