@@ -6,9 +6,11 @@ class p94(kernelMachine):
     def __init__(self, kernel):
         '''constructor accepts kernelMachine object'''
         '''p94 model object can only be created if kernelMachine model exists and it is trained'''
-        self.symbols = kernel.symbols
-        self.stimuli = kernel.stimuli
-        self.G = kernel.G
+        self.kernel = kernelMachine()
+        self.kernel.train(design)
+        self.symbols = self.kernel.symbols
+        self.stimuli = self.kernel.stimuli
+        self.G = self.kernel.G
         self.model = 'p94'
         
     def bind( self, inexpr):
@@ -65,3 +67,10 @@ class p94(kernelMachine):
         #else:
         #    raise Exception('model "' + model + '" not known')
         return g.simplify()
+    
+    def V(self, X, p):
+        expression = self.kernel.V(X,p)
+        self.symbols = self.kernel.symbols
+        self.stimuli = self.kernel.stimuli
+        self.G = self.kernel.G
+        self.bind(expression)
