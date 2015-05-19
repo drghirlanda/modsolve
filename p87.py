@@ -3,7 +3,7 @@ from modsolve import kernelMachine
 
 class p87(kernelMachine):
     
-    def __init__(self, kernel):
+    def __init__(self, design):
         '''constructor accepts kernelMachine object'''
         '''p87 model object can only be created if kernelMachine model exists and it is trained'''
         self.kernel = kernelMachine()
